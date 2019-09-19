@@ -1,26 +1,53 @@
-const express = require("express");
-const mongoose = require ("mongoose");
-const routes= require ("./routes")
 
-const PORT = process.env.PORT || 3001;
-const app = express();
+// =============================================================
+const express = require('express'),
 
-// Define middleware here
-app.use(express.urlencoded({ extended: true }));
-app.use(express.json());
+    bodyParser = require('body-parser'),
+    logger = require('morgan'),
+    mongoose = require('mongoose'),
+    methodOverride = require('method-override');
 
-// Serve up static assets (usually on heroku)
-if (process.env.NODE_ENV === "production") {
-  app.use(express.static("client/build"));
-}
+// set up express app
+// =============================================================
+const PORT = process.env.PORT || 8000;
+let app = express();
 
-// Define API routes here
-app.use(routes)
+app
+    .use(bodyParser.json())
+    .use(bodyParser.urlencoded({ extended: true }))
+    .use(bodyParser.text())
+    .use(bodyParser.json({ type: 'application/vnd.api+json' }))
+    .use(methodOverride('_method'))
+    .use(logger('dev'))
+    .use(express.static(__dirname + '/public'))
+ 
+    //.use(require('./controllers'));
 
-//Connet to mongoose
-mongoose.connect(process.env.MONGODB_URI || "mongodb://localhost/googlebooks", {useNewUrlParser: true});
+// configure mongoose and start the server
+// =============================================================
+// set mongoose to leverage promises
+mongoose.Promise = Promise;
 
+const dbURI = process.env.MONGODB_URI || "mongodb://localhost:27017/GoogleReactSearch";
 
-app.listen(PORT, () => {
-  console.log(`🌎 ==> API server now on port ${PORT}!`);
+// Database configuration with mongoose
+mongoose.set('useCreateIndex', true)
+mongoose.connect(dbURI, { useNewUrlParser: true });
+
+const db = mongoose.connection;
+
+// Show any mongoose errors
+db.on("error", function (error) {
+    console.log("Mongoose Error: ", error);
 });
+
+// Once logged in to the db through mongoose, log a success message
+db.once("open", function () {
+    console.log("Mongoose connection successful.");
+    // start the server, listen on port 3000
+    app.listen(PORT, function () {
+        console.log("App running on port " + PORT);
+    });
+});
+
+module.exports = app;
